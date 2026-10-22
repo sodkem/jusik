@@ -347,24 +347,9 @@ async function loadChart(symbol, period) {
 // ── 종목 검색 ─────────────────────────────────────────────────────────────────
 
 async function searchStock() {
-  const marketSel = document.getElementById('market-select').value;
   const raw = document.getElementById('ticker-input').value.trim();
   if (!raw) return;
-
-  let symbol;
-  if (marketSel === 'auto') {
-    symbol = detectMarket(raw);
-  } else if (marketSel === 'KR') {
-    symbol = /^\d{6}$/.test(raw) ? raw + '.KS' : raw.toUpperCase();
-  } else if (marketSel === 'JP') {
-    symbol = /^\d{4}$/.test(raw) ? raw + '.T' : raw.toUpperCase();
-  } else if (marketSel === 'CN') {
-    symbol = raw.includes('.') ? raw.toUpperCase() : raw + '.SS';
-  } else if (marketSel === 'HK') {
-    symbol = raw.includes('.') ? raw.toUpperCase() : raw + '.HK';
-  } else {
-    symbol = raw.toUpperCase();
-  }
+  const symbol = detectMarket(raw);
 
   const infoEl = document.getElementById('stock-info');
   infoEl.innerHTML = '<span style="color:#bbb;font-size:13px">조회 중...</span>';
@@ -464,7 +449,7 @@ function renderRankings(data) {
   list.querySelectorAll('.rank-item').forEach(el => {
     el.addEventListener('click', () => {
       document.getElementById('ticker-input').value = el.dataset.symbol;
-      document.getElementById('market-select').value = 'auto';
+      document.getElementById('name-input').value = '';
       switchView('chart');
       searchStock();
     });
@@ -509,6 +494,68 @@ document.getElementById('btn-to-sim').addEventListener('click', () => {
   }
   switchView('sim');
   computeResult();
+});
+
+// ── 종목명 자동완성 ───────────────────────────────────────────────────────────
+
+const MARKET_LABEL = { KS: '한국', KQ: '한국', T: '일본', SS: '중국', SZ: '중국', HK: '홍콩' };
+
+function getMarketLabel(symbol) {
+  const ext = symbol.split('.').pop();
+  return MARKET_LABEL[ext] || '미국';
+}
+
+function hideSuggestions() {
+  document.getElementById('name-suggestions').classList.add('hidden');
+}
+
+function renderSuggestions(quotes) {
+  const el = document.getElementById('name-suggestions');
+  if (!quotes.length) { el.classList.add('hidden'); return; }
+  el.innerHTML = quotes.map(q => {
+    const name = getDisplayName(q.symbol, q.shortname || q.longname || q.symbol);
+    return `<div class="sug-item" data-symbol="${q.symbol}" data-name="${name}">
+      <span class="sug-name">${name}</span>
+      <div class="sug-right">
+        <span class="sug-symbol">${q.symbol}</span>
+        <span class="sug-market">${getMarketLabel(q.symbol)}</span>
+      </div>
+    </div>`;
+  }).join('');
+  el.classList.remove('hidden');
+  el.querySelectorAll('.sug-item').forEach(item => {
+    item.addEventListener('mousedown', e => {
+      e.preventDefault();
+      document.getElementById('ticker-input').value = item.dataset.symbol;
+      document.getElementById('name-input').value = item.dataset.name;
+      hideSuggestions();
+      searchStock();
+    });
+  });
+}
+
+async function fetchSuggestions(q) {
+  const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=10&newsCount=0&listsCount=0`;
+  const r = await yahooFetch(url);
+  if (!r) return;
+  const j = await r.json();
+  const quotes = (j?.quotes || []).filter(q => q.quoteType === 'EQUITY' && q.symbol);
+  renderSuggestions(quotes);
+}
+
+let suggestTimer = null;
+document.getElementById('name-input').addEventListener('input', e => {
+  clearTimeout(suggestTimer);
+  const q = e.target.value.trim();
+  if (!q) { hideSuggestions(); return; }
+  suggestTimer = setTimeout(() => fetchSuggestions(q), 300);
+});
+document.getElementById('name-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { hideSuggestions(); searchStock(); }
+  if (e.key === 'Escape') hideSuggestions();
+});
+document.addEventListener('click', e => {
+  if (!e.target.closest('.search-name-wrap')) hideSuggestions();
 });
 
 // ── 검색 이벤트 ───────────────────────────────────────────────────────────────

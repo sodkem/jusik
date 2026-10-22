@@ -32,15 +32,11 @@
     <div id="view-chart" class="view active">
       <div class="chart-header">
         <div class="chart-search">
-          <select id="market-select">
-            <option value="auto">🌐 자동</option>
-            <option value="KR">🇰🇷 국내</option>
-            <option value="US">🇺🇸 미국</option>
-            <option value="JP">🇯🇵 일본</option>
-            <option value="CN">🇨🇳 중국</option>
-            <option value="HK">🇭🇰 홍콩</option>
-          </select>
-          <input id="ticker-input" type="text" placeholder="005930 / AAPL / 7203 / 600519" autocomplete="off" />
+          <div class="search-name-wrap">
+            <input id="name-input" type="text" placeholder="종목명 검색 (예: 삼성전자, Apple)" autocomplete="off" />
+            <div id="name-suggestions" class="suggestions hidden"></div>
+          </div>
+          <input id="ticker-input" type="text" placeholder="코드 (예: 005930, AAPL)" autocomplete="off" class="search-code" />
           <button id="btn-search">조회</button>
         </div>
         <div id="stock-info" class="stock-info hidden"></div>
