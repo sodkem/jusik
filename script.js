@@ -135,6 +135,16 @@ let currentPriceLine = null;
 let currentClosePrice = null;
 let currentHoverLabel = null;
 
+const MA_DEFS = [
+  { n: 5,   color: '#ff9f0a' },
+  { n: 20,  color: '#34c759' },
+  { n: 60,  color: '#bf5af2' },
+  { n: 120, color: '#ff375f' },
+];
+let maSeries    = {};
+let maVisible   = { 5: true, 20: true, 60: false, 120: false };
+let showCrosses = true;
+
 // ── Yahoo Finance 헬퍼 ────────────────────────────────────────────────────────
 
 const CF_PROXY = 'https://shiny-mud-4976.sodkem93.workers.dev/?url=';
@@ -272,6 +282,48 @@ function makeFormatter(currency) {
   return p => '$' + p.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function calcMA(candles, n) {
+  const result = [];
+  for (let i = n - 1; i < candles.length; i++) {
+    let sum = 0;
+    for (let j = i - n + 1; j <= i; j++) sum += candles[j].close;
+    result.push({ time: candles[i].time, value: sum / n });
+  }
+  return result;
+}
+
+function calcCrossMarkers(candles) {
+  const ma5  = calcMA(candles, 5);
+  const ma20 = calcMA(candles, 20);
+  if (ma5.length < 2 || ma20.length < 2) return [];
+  const m20map = new Map(ma20.map(v => [JSON.stringify(v.time), v.value]));
+  const markers = [];
+  let prev = null;
+  for (const p of ma5) {
+    const longVal = m20map.get(JSON.stringify(p.time));
+    if (longVal == null) continue;
+    const diff = p.value - longVal;
+    if (prev !== null) {
+      if (prev < 0 && diff >= 0)
+        markers.push({ time: p.time, position: 'belowBar', color: '#ffd700', shape: 'arrowUp',   text: '골든', size: 1 });
+      else if (prev > 0 && diff <= 0)
+        markers.push({ time: p.time, position: 'aboveBar', color: '#ff375f', shape: 'arrowDown', text: '데드', size: 1 });
+    }
+    prev = diff;
+  }
+  return markers;
+}
+
+function updateMALines(candles) {
+  for (const { n } of MA_DEFS) {
+    if (!maSeries[n]) continue;
+    maSeries[n].setData(maVisible[n] && candles.length >= n ? calcMA(candles, n) : []);
+  }
+  if (candleSeries) {
+    candleSeries.setMarkers(showCrosses ? calcCrossMarkers(candles) : []);
+  }
+}
+
 function updateHighLowLines() {
   if (!candleSeries || allCandles.length === 0) return;
   const range = chartInstance.timeScale().getVisibleLogicalRange();
@@ -363,6 +415,17 @@ function initChart() {
     visible: false,
   });
 
+  maSeries = {};
+  for (const { n, color } of MA_DEFS) {
+    maSeries[n] = chartInstance.addLineSeries({
+      color,
+      lineWidth: 1,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      crosshairMarkerVisible: false,
+    });
+  }
+
   chartInstance.timeScale().subscribeVisibleLogicalRangeChange((range) => {
     updateHighLowLines();
     if (!range || allCandles.length === 0) return;
@@ -453,6 +516,7 @@ async function loadChart(symbol, period) {
   }
 
   updateHighLowLines();
+  updateMALines(allCandles);
 }
 
 // ── 종목 로드 ─────────────────────────────────────────────────────────────────
@@ -751,6 +815,23 @@ document.getElementById('name-input').addEventListener('keydown', e => {
 });
 document.addEventListener('click', e => {
   if (!e.target.closest('.search-name-wrap') && e.target.id !== 'btn-search') hideSuggestions();
+});
+
+// ── 이평선 토글 ───────────────────────────────────────────────────────────────
+
+document.querySelectorAll('.ma-btn[data-ma]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const n = parseInt(btn.dataset.ma, 10);
+    maVisible[n] = !maVisible[n];
+    btn.classList.toggle('on', maVisible[n]);
+    if (allCandles.length) updateMALines(allCandles);
+  });
+});
+
+document.getElementById('btn-crosses').addEventListener('click', () => {
+  showCrosses = !showCrosses;
+  document.getElementById('btn-crosses').classList.toggle('on', showCrosses);
+  if (allCandles.length) updateMALines(allCandles);
 });
 
 // ── 검색 이벤트 ───────────────────────────────────────────────────────────────

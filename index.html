@@ -60,6 +60,14 @@
           <button class="min-tab" data-period="15분">15분</button>
           <button class="min-tab" data-period="30분">30분</button>
         </div>
+        <div class="ma-toggles">
+          <span class="ma-label">이평선</span>
+          <button class="ma-btn on" data-ma="5"   style="--mc:#ff9f0a">MA5</button>
+          <button class="ma-btn on" data-ma="20"  style="--mc:#34c759">MA20</button>
+          <button class="ma-btn"    data-ma="60"  style="--mc:#bf5af2">MA60</button>
+          <button class="ma-btn"    data-ma="120" style="--mc:#ff375f">MA120</button>
+          <button class="ma-btn cross-btn on" id="btn-crosses" style="--mc:#ffd700">골든/데드크로스</button>
+        </div>
       </div>
 
       <div id="chart-container" class="chart-container">
@@ -135,7 +143,7 @@
 </div>
 
 <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
-<script src="script.js?v=14"></script>
+<script src="script.js?v=15"></script>
 <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "a64f61c97517421d9c17b93b7cdf6fbf"}'></script><!-- End Cloudflare Web Analytics -->
 </body>
 </html>
