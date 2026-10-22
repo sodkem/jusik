@@ -42,13 +42,24 @@
       </div>
 
       <div class="chart-controls">
-        <div class="period-tabs">
-          <button class="period-tab active" data-period="D">일봉</button>
-          <button class="period-tab" data-period="W">주봉</button>
-          <button class="period-tab" data-period="M">월봉</button>
-          <button class="period-tab" data-period="Y">년봉</button>
+        <div class="chart-controls-top">
+          <div class="period-tabs">
+            <button class="period-tab" data-period-group="min">분봉 ▾</button>
+            <button class="period-tab active" data-period="D">일봉</button>
+            <button class="period-tab" data-period="W">주봉</button>
+            <button class="period-tab" data-period="M">월봉</button>
+            <button class="period-tab" data-period="Y">년봉</button>
+          </div>
+          <button id="btn-to-sim" class="btn-sim-link hidden">💹 이 종목으로 시뮬레이터</button>
         </div>
-        <button id="btn-to-sim" class="btn-sim-link hidden">💹 이 종목으로 시뮬레이터</button>
+        <div id="min-tabs" class="min-tabs hidden">
+          <button class="min-tab" data-period="1분">1분</button>
+          <button class="min-tab" data-period="3분">3분</button>
+          <button class="min-tab" data-period="5분">5분</button>
+          <button class="min-tab" data-period="10분">10분</button>
+          <button class="min-tab" data-period="15분">15분</button>
+          <button class="min-tab" data-period="30분">30분</button>
+        </div>
       </div>
 
       <div id="chart-container" class="chart-container">

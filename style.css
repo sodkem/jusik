@@ -174,13 +174,33 @@ body {
 /* ── 차트 컨트롤 바 ── */
 .chart-controls {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 6px;
   padding: 8px 18px;
   background: var(--card);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
+.chart-controls-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.min-tabs { display: flex; gap: 4px; }
+.min-tabs.hidden { display: none; }
+.min-tab {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--card);
+  font-size: 11px;
+  color: #666;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.1s;
+}
+.min-tab:hover { background: #f5f5f7; }
+.min-tab.active { background: var(--blue); color: #fff; border-color: var(--blue); }
 
 .period-tabs { display: flex; gap: 4px; }
 .period-tab {

@@ -102,10 +102,16 @@ function getDisplayName(symbol, fallback) {
 }
 
 const PERIOD_CONFIG = {
-  'D': { interval: '1d',  range: 'max' },
-  'W': { interval: '1wk', range: 'max' },
-  'M': { interval: '1mo', range: 'max' },
-  'Y': { interval: '1mo', range: 'max' }, // 월봉 데이터를 년 단위로 집계
+  '1분':  { interval: '1m',  range: '2d',  intraday: true },
+  '3분':  { interval: '1m',  range: '2d',  intraday: true, aggregate: 3 },
+  '5분':  { interval: '5m',  range: '5d',  intraday: true },
+  '10분': { interval: '5m',  range: '5d',  intraday: true, aggregate: 10 },
+  '15분': { interval: '15m', range: '5d',  intraday: true },
+  '30분': { interval: '30m', range: '5d',  intraday: true },
+  'D':    { interval: '1d',  range: 'max' },
+  'W':    { interval: '1wk', range: 'max' },
+  'M':    { interval: '1mo', range: 'max' },
+  'Y':    { interval: '1mo', range: 'max' },
 };
 
 // ── 상태 ──────────────────────────────────────────────────────────────────────
@@ -157,7 +163,8 @@ async function fetchQuote(symbol) {
 }
 
 async function fetchChartData(symbol, period) {
-  const { interval, range } = PERIOD_CONFIG[period];
+  const config = PERIOD_CONFIG[period];
+  const { interval, range, intraday, aggregate } = config;
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=${interval}&range=${range}`;
   const r = await yahooFetch(url);
   if (!r) return null;
@@ -175,12 +182,35 @@ async function fetchChartData(symbol, period) {
 
   for (let i = 0; i < ts.length; i++) {
     if (q.open?.[i] == null || q.high?.[i] == null || q.low?.[i] == null || q.close?.[i] == null) continue;
-    const time = new Date(ts[i] * 1000).toISOString().split('T')[0];
+    const time = intraday ? ts[i] : new Date(ts[i] * 1000).toISOString().split('T')[0];
     if (seen.has(time)) continue;
     seen.add(time);
     candles.push({ time, open: q.open[i], high: q.high[i], low: q.low[i], close: q.close[i] });
     volumes.push({ time, value: q.volume?.[i] || 0, color: q.close[i] >= q.open[i] ? 'rgba(229,57,53,0.4)' : 'rgba(21,101,192,0.4)' });
   }
+
+  // 분봉 집계 (3분, 10분 등)
+  if (aggregate) {
+    const aggSecs = aggregate * 60;
+    const buckets = {};
+    candles.forEach((c, i) => {
+      const key = Math.floor(c.time / aggSecs) * aggSecs;
+      if (!buckets[key]) {
+        buckets[key] = { open: c.open, high: c.high, low: c.low, close: c.close, vol: volumes[i].value };
+      } else {
+        buckets[key].high  = Math.max(buckets[key].high, c.high);
+        buckets[key].low   = Math.min(buckets[key].low,  c.low);
+        buckets[key].close = c.close;
+        buckets[key].vol  += volumes[i].value;
+      }
+    });
+    const sorted = Object.entries(buckets).sort((a, b) => +a[0] - +b[0]);
+    return {
+      candles: sorted.map(([k, v]) => ({ time: +k, open: v.open, high: v.high, low: v.low, close: v.close })),
+      volumes: sorted.map(([k, v]) => ({ time: +k, value: v.vol, color: v.close >= v.open ? 'rgba(229,57,53,0.4)' : 'rgba(21,101,192,0.4)' })),
+    };
+  }
+
   if (period === 'Y') {
     const yearMap = {};
     candles.forEach((c, i) => {
@@ -263,15 +293,17 @@ function initChart() {
       secondsVisible: false,
       rightOffset: 5,
       tickMarkFormatter: (time, tickMarkType) => {
-        let y, m, d;
+        let y, m, d, dt = null;
         if (typeof time === 'object' && time !== null) {
           y = time.year; m = time.month; d = time.day;
         } else {
-          const dt = new Date(time * 1000);
+          dt = new Date(time * 1000);
           y = dt.getFullYear(); m = dt.getMonth() + 1; d = dt.getDate();
         }
-        const mm = String(m).padStart(2, '0');
-        const dd = String(d).padStart(2, '0');
+        if (tickMarkType >= 3) {
+          if (!dt) dt = new Date(time * 1000);
+          return String(dt.getHours()).padStart(2,'0') + ':' + String(dt.getMinutes()).padStart(2,'0');
+        }
         if (tickMarkType === 0) return y + '년';
         if (tickMarkType === 1) return m + '월';
         return m + '월 ' + d + '일';
@@ -280,14 +312,17 @@ function initChart() {
     localization: {
       priceFormatter: makeFormatter('KRW'),
       timeFormatter: (time) => {
-        let y, m, d;
+        let y, m, d, hh = null, mn = null;
         if (typeof time === 'object' && time !== null) {
           y = time.year; m = time.month; d = time.day;
         } else {
           const dt = new Date(time * 1000);
           y = dt.getFullYear(); m = dt.getMonth() + 1; d = dt.getDate();
+          hh = dt.getHours(); mn = dt.getMinutes();
         }
-        return y + '년 ' + m + '월 ' + d + '일';
+        const base = y + '년 ' + m + '월 ' + d + '일';
+        if (hh !== null) return base + ' ' + String(hh).padStart(2,'0') + ':' + String(mn).padStart(2,'0');
+        return base;
       },
     },
     width: container.clientWidth,
@@ -308,7 +343,14 @@ function initChart() {
     scaleMargins: { top: 0.8, bottom: 0 },
   });
 
-  chartInstance.timeScale().subscribeVisibleLogicalRangeChange(updateHighLowLines);
+  chartInstance.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+    updateHighLowLines();
+    if (!range || allCandles.length === 0) return;
+    const maxTo = allCandles.length - 1 + 3;
+    if (range.to > maxTo) {
+      chartInstance.timeScale().setVisibleLogicalRange({ from: range.from - (range.to - maxTo), to: maxTo });
+    }
+  });
 
   new ResizeObserver(() => {
     if (chartInstance) {
@@ -385,7 +427,29 @@ async function loadStockBySymbol(symbol) {
 
 document.querySelectorAll('.period-tab').forEach(btn => {
   btn.addEventListener('click', () => {
-    document.querySelectorAll('.period-tab').forEach(b => b.classList.remove('active'));
+    if (btn.dataset.periodGroup === 'min') {
+      document.querySelectorAll('.period-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('min-tabs').classList.remove('hidden');
+      if (!document.querySelector('.min-tab.active') && currentSymbol) {
+        currentPeriod = '5분';
+        document.querySelector('.min-tab[data-period="5분"]').classList.add('active');
+        loadChart(currentSymbol, currentPeriod);
+      }
+    } else {
+      document.querySelectorAll('.period-tab').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.min-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('min-tabs').classList.add('hidden');
+      currentPeriod = btn.dataset.period;
+      if (currentSymbol) loadChart(currentSymbol, currentPeriod);
+    }
+  });
+});
+
+document.querySelectorAll('.min-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.min-tab').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     currentPeriod = btn.dataset.period;
     if (currentSymbol) loadChart(currentSymbol, currentPeriod);
