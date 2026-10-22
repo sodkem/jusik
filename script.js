@@ -102,18 +102,15 @@ function getDisplayName(symbol, fallback) {
 }
 
 const PERIOD_CONFIG = {
-  '1D': { interval: '5m',  range: '1d' },
-  '1W': { interval: '1h',  range: '5d' },
-  '1M': { interval: '1d',  range: '1mo' },
-  '3M': { interval: '1d',  range: '3mo' },
-  '1Y': { interval: '1d',  range: '1y' },
-  '5Y': { interval: '1wk', range: '5y' },
+  'D': { interval: '1d',  range: 'max' },
+  'W': { interval: '1wk', range: 'max' },
+  'M': { interval: '1mo', range: 'max' },
 };
 
 // ── 상태 ──────────────────────────────────────────────────────────────────────
 
 let currentSymbol = null;
-let currentPeriod = '1M';
+let currentPeriod = 'D';
 let chartInstance = null;
 let candleSeries = null;
 let volumeSeries = null;
@@ -167,16 +164,13 @@ async function fetchChartData(symbol, period) {
   const q = result.indicators?.quote?.[0];
   if (!ts || !q) return null;
 
-  const isIntraday = period === '1D' || period === '1W';
   const seen = new Set();
   const candles = [];
   const volumes = [];
 
   for (let i = 0; i < ts.length; i++) {
     if (q.open?.[i] == null || q.high?.[i] == null || q.low?.[i] == null || q.close?.[i] == null) continue;
-    const time = isIntraday
-      ? ts[i]
-      : new Date(ts[i] * 1000).toISOString().split('T')[0];
+    const time = new Date(ts[i] * 1000).toISOString().split('T')[0];
     if (seen.has(time)) continue;
     seen.add(time);
     candles.push({ time, open: q.open[i], high: q.high[i], low: q.low[i], close: q.close[i] });
