@@ -277,19 +277,22 @@ function applyCommaFmt(el) {
 }
 
 const MARKET_TZ = {
-  KS: { tz: 'Asia/Seoul',     open: [9,0],  close: [15,30] },
-  KQ: { tz: 'Asia/Seoul',     open: [9,0],  close: [15,30] },
-  T:  { tz: 'Asia/Tokyo',     open: [9,0],  close: [15,30] },
-  SS: { tz: 'Asia/Shanghai',  open: [9,30], close: [15,0]  },
-  SZ: { tz: 'Asia/Shanghai',  open: [9,30], close: [15,0]  },
-  HK: { tz: 'Asia/Hong_Kong', open: [9,30], close: [16,0]  },
+  KS: { name: '한국 (KSE)',     tz: 'Asia/Seoul',     open: [9,0],  close: [15,30] },
+  KQ: { name: '한국 (KOSDAQ)',  tz: 'Asia/Seoul',     open: [9,0],  close: [15,30] },
+  T:  { name: '일본 (TSE)',     tz: 'Asia/Tokyo',     open: [9,0],  close: [15,30] },
+  SS: { name: '중국 (상하이)',  tz: 'Asia/Shanghai',  open: [9,30], close: [15,0]  },
+  SZ: { name: '중국 (선전)',    tz: 'Asia/Shanghai',  open: [9,30], close: [15,0]  },
+  HK: { name: '홍콩 (HKEX)',   tz: 'Asia/Hong_Kong', open: [9,30], close: [16,0]  },
 };
+
+function pad2(n) { return String(n).padStart(2, '0'); }
 
 function getMarketStatus(symbol) {
   const suffix = symbol.includes('.') ? symbol.split('.').pop().toUpperCase() : null;
   const info   = suffix ? MARKET_TZ[suffix] : null;
   const isUS   = !info;
-  const tz     = info?.tz || 'America/New_York';
+  const mktName = info?.name || '미국 (NYSE/NASDAQ)';
+  const tz      = info?.tz   || 'America/New_York';
   const [oH, oM]  = info?.open  || [9, 30];
   const [cH, cM]  = info?.close || [16, 0];
 
@@ -299,13 +302,17 @@ function getMarketStatus(symbol) {
   const tO  = oH * 60 + oM;
   const tC  = cH * 60 + cM;
 
-  if (day === 0 || day === 6) return { label: '주말휴장', color: '#ff3b30' };
-  if (t >= tO && t < tC)     return { label: '장중',     color: '#34c759' };
+  const hoursLine = `정규장 ${pad2(oH)}:${pad2(oM)} – ${pad2(cH)}:${pad2(cM)}`;
+  const preAfter  = isUS ? '\n프리마켓 04:00 – 09:30\n애프터마켓 16:00 – 20:00' : '';
+  const tooltip   = `${mktName}\n${hoursLine}${preAfter}`;
+
+  if (day === 0 || day === 6) return { label: '주말휴장', color: '#ff3b30', tooltip };
+  if (t >= tO && t < tC)     return { label: '장중',     color: '#34c759', tooltip };
   if (isUS) {
-    if (t >= 4 * 60 && t < tO)   return { label: '프리마켓',    color: '#ff9500' };
-    if (t >= tC && t < 20 * 60)  return { label: '애프터마켓', color: '#ff9500' };
+    if (t >= 4 * 60 && t < tO)   return { label: '프리마켓',    color: '#ff9500', tooltip };
+    if (t >= tC && t < 20 * 60)  return { label: '애프터마켓', color: '#ff9500', tooltip };
   }
-  return { label: '장마감', color: '#ff3b30' };
+  return { label: '장마감', color: '#ff3b30', tooltip };
 }
 
 function fmtPrice(n, currency) {
@@ -593,7 +600,7 @@ async function loadStockBySymbol(symbol) {
     <span class="si-ticker">${symbol}</span>
     <span class="si-price">${fmtPrice(meta.regularMarketPrice, currency)}</span>
     <span class="si-change ${cls}">${sign}${(meta.regularMarketChange || 0).toFixed(2)} (${sign}${pct.toFixed(2)}%)</span>
-    <span class="si-mkt-status"><span class="si-mkt-dot" style="background:${mkt.color}"></span>${mkt.label}</span>
+    <span class="si-mkt-status" title="${mkt.tooltip}"><span class="si-mkt-dot" style="background:${mkt.color}"></span>${mkt.label}</span>
   `;
 
   document.getElementById('btn-to-sim').classList.remove('hidden');
