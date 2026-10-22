@@ -105,6 +105,7 @@ const PERIOD_CONFIG = {
   'D': { interval: '1d',  range: 'max' },
   'W': { interval: '1wk', range: 'max' },
   'M': { interval: '1mo', range: 'max' },
+  'Y': { interval: '1mo', range: 'max' }, // 월봉 데이터를 년 단위로 집계
 };
 
 // ── 상태 ──────────────────────────────────────────────────────────────────────
@@ -176,6 +177,24 @@ async function fetchChartData(symbol, period) {
     candles.push({ time, open: q.open[i], high: q.high[i], low: q.low[i], close: q.close[i] });
     volumes.push({ time, value: q.volume?.[i] || 0, color: q.close[i] >= q.open[i] ? 'rgba(229,57,53,0.4)' : 'rgba(21,101,192,0.4)' });
   }
+  if (period === 'Y') {
+    const yearMap = {};
+    candles.forEach((c, i) => {
+      const year = c.time.substring(0, 4);
+      if (!yearMap[year]) {
+        yearMap[year] = { open: c.open, high: c.high, low: c.low, close: c.close, vol: volumes[i].value };
+      } else {
+        yearMap[year].high  = Math.max(yearMap[year].high, c.high);
+        yearMap[year].low   = Math.min(yearMap[year].low,  c.low);
+        yearMap[year].close = c.close;
+        yearMap[year].vol  += volumes[i].value;
+      }
+    });
+    const yc = Object.entries(yearMap).map(([y, v]) => ({ time: y + '-01-01', open: v.open, high: v.high, low: v.low, close: v.close }));
+    const yv = Object.entries(yearMap).map(([y, v]) => ({ time: y + '-01-01', value: v.vol, color: v.close >= v.open ? 'rgba(229,57,53,0.4)' : 'rgba(21,101,192,0.4)' }));
+    return { candles: yc, volumes: yv };
+  }
+
   return { candles, volumes };
 }
 
