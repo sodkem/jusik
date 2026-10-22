@@ -132,6 +132,8 @@ let allCandles = [];
 let highPriceLine = null;
 let lowPriceLine = null;
 let currentPriceLine = null;
+let currentClosePrice = null;
+let currentHoverLabel = null;
 
 // ── Yahoo Finance 헬퍼 ────────────────────────────────────────────────────────
 
@@ -370,6 +372,28 @@ function initChart() {
     }
   });
 
+  // 현재가 호버 라벨
+  if (currentHoverLabel) currentHoverLabel.remove();
+  currentHoverLabel = document.createElement('div');
+  currentHoverLabel.textContent = '현재가';
+  currentHoverLabel.style.cssText = 'position:absolute;right:58px;background:#ff9500;color:#fff;padding:2px 7px;border-radius:3px;font-size:11px;font-weight:700;pointer-events:none;display:none;z-index:10;white-space:nowrap;';
+  container.style.position = 'relative';
+  container.appendChild(currentHoverLabel);
+
+  chartInstance.subscribeCrosshairMove((param) => {
+    if (!candleSeries || currentClosePrice == null || !param.point) {
+      currentHoverLabel.style.display = 'none';
+      return;
+    }
+    const priceY = candleSeries.priceToCoordinate(currentClosePrice);
+    if (priceY !== null && Math.abs(param.point.y - priceY) < 8) {
+      currentHoverLabel.style.display = 'block';
+      currentHoverLabel.style.top = (priceY - 10) + 'px';
+    } else {
+      currentHoverLabel.style.display = 'none';
+    }
+  });
+
   new ResizeObserver(() => {
     if (chartInstance) {
       const c = document.getElementById('chart-container');
@@ -400,26 +424,17 @@ async function loadChart(symbol, period) {
   candleSeries.setData(data.candles);
   volumeSeries.setData(data.volumes);
 
-  // 현재가 라인 - 마지막 봉 종가 (최고/최저와 겹치면 생략)
+  // 현재가 라인 - 마지막 봉 종가 (호버 시 "현재가" 라벨 표시)
   try { if (currentPriceLine) candleSeries.removePriceLine(currentPriceLine); currentPriceLine = null; } catch {}
-  const lastClose = data.candles[data.candles.length - 1].close;
-  const allHighs = data.candles.map(c => c.high);
-  const allLows  = data.candles.map(c => c.low);
-  const maxHigh  = Math.max(...allHighs);
-  const minLow   = Math.min(...allLows);
-  const range    = maxHigh - minLow || 1;
-  const tooClose = Math.abs(lastClose - maxHigh) / range < 0.01
-                || Math.abs(lastClose - minLow)  / range < 0.01;
-  if (!tooClose) {
-    currentPriceLine = candleSeries.createPriceLine({
-      price: lastClose,
-      color: '#ff9500',
-      lineWidth: 1,
-      lineStyle: LightweightCharts.LineStyle.Dashed,
-      axisLabelVisible: true,
-      title: '',
-    });
-  }
+  currentClosePrice = data.candles[data.candles.length - 1].close;
+  currentPriceLine = candleSeries.createPriceLine({
+    price: currentClosePrice,
+    color: '#ff9500',
+    lineWidth: 1,
+    lineStyle: LightweightCharts.LineStyle.Dashed,
+    axisLabelVisible: false,
+    title: '',
+  });
   chartInstance.applyOptions({ localization: { priceFormatter: makeFormatter(currentCurrency) } });
   chartInstance.timeScale().fitContent();
 
