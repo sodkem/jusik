@@ -267,6 +267,15 @@ async function fetchBatchQuotes(symbols) {
 
 // ── 포맷 헬퍼 ─────────────────────────────────────────────────────────────────
 
+function parseComma(v) {
+  return parseFloat(String(v).replace(/,/g, '')) || 0;
+}
+
+function applyCommaFmt(el) {
+  const digits = el.value.replace(/[^0-9]/g, '');
+  el.value = digits ? Number(digits).toLocaleString('ko-KR') : '';
+}
+
 function fmtPrice(n, currency) {
   if (n == null || isNaN(n)) return '-';
   if (currency === 'KRW') return n.toLocaleString('ko-KR') + '원';
@@ -691,7 +700,7 @@ document.querySelectorAll('.nav-item').forEach(btn => {
 
 document.getElementById('btn-to-sim').addEventListener('click', () => {
   if (lastStock) {
-    document.getElementById('current-price').value = lastStock.price;
+    document.getElementById('current-price').value = Math.round(lastStock.price).toLocaleString('ko-KR');
     const badge = document.getElementById('sim-stock-badge');
     badge.textContent = `${lastStock.name}  ${fmtPrice(lastStock.price, lastStock.currency)}`;
     badge.classList.remove('hidden');
@@ -842,9 +851,11 @@ document.getElementById('btn-search').addEventListener('click', selectFirstSugge
 
 // ── 시뮬레이터 ───────────────────────────────────────────────────────────────
 
-['first-price', 'first-qty', 'stop-loss', 'target-price', 'current-price'].forEach(id => {
-  document.getElementById(id).addEventListener('input', computeResult);
+['first-price', 'stop-loss', 'target-price', 'current-price'].forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener('input', () => { applyCommaFmt(el); computeResult(); });
 });
+document.getElementById('first-qty').addEventListener('input', computeResult);
 
 let stepCount = 0;
 
@@ -853,31 +864,50 @@ document.getElementById('btn-add-step').addEventListener('click', () => {
   const id  = 'step-' + Date.now();
   const div = document.createElement('div');
   div.className = 'step-row';
+  div.dataset.mode = 'pct';
   div.id = id;
   div.innerHTML = `
     <span class="step-label">${stepCount}</span>
-    <div class="field"><label>하락률 (%)</label><input type="number" min="0" max="100" placeholder="예: 10" class="drop-pct" /></div>
+    <div class="field">
+      <div class="step-mode-wrap">
+        <button class="step-mode active" data-m="pct">% 하락</button>
+        <button class="step-mode" data-m="price">단가 직접</button>
+      </div>
+      <input type="text" inputmode="decimal" placeholder="하락률 예: 10" class="drop-pct" />
+      <input type="text" inputmode="numeric" placeholder="단가 예: 45,000" class="step-price" style="display:none" />
+    </div>
     <div class="field"><label>추가 수량 (주)</label><input type="number" min="0" placeholder="예: 50" class="add-qty" /></div>
     <button class="btn-del" data-id="${id}">✕</button>
   `;
+  div.querySelectorAll('.step-mode').forEach(btn => {
+    btn.addEventListener('click', () => {
+      div.dataset.mode = btn.dataset.m;
+      div.querySelectorAll('.step-mode').forEach(b => b.classList.toggle('active', b === btn));
+      div.querySelector('.drop-pct').style.display  = btn.dataset.m === 'pct'   ? '' : 'none';
+      div.querySelector('.step-price').style.display = btn.dataset.m === 'price' ? '' : 'none';
+      computeResult();
+    });
+  });
+  div.querySelector('.step-price').addEventListener('input', e => { applyCommaFmt(e.target); computeResult(); });
+  div.querySelector('.drop-pct').addEventListener('input', computeResult);
+  div.querySelector('.add-qty').addEventListener('input', computeResult);
   div.querySelector('.btn-del').addEventListener('click', () => {
     div.remove();
     document.getElementById('steps-empty').style.display =
       document.getElementById('steps-list').children.length === 0 ? 'block' : 'none';
     computeResult();
   });
-  div.querySelectorAll('input').forEach(inp => inp.addEventListener('input', computeResult));
   document.getElementById('steps-list').appendChild(div);
   document.getElementById('steps-empty').style.display = 'none';
   computeResult();
 });
 
 function computeResult() {
-  const firstPrice = parseFloat(document.getElementById('first-price').value) || 0;
+  const firstPrice = parseComma(document.getElementById('first-price').value);
   const firstQty   = parseFloat(document.getElementById('first-qty').value) || 0;
-  const stopLoss   = parseFloat(document.getElementById('stop-loss').value) || 0;
-  const target     = parseFloat(document.getElementById('target-price').value) || 0;
-  const current    = parseFloat(document.getElementById('current-price').value) || 0;
+  const stopLoss   = parseComma(document.getElementById('stop-loss').value);
+  const target     = parseComma(document.getElementById('target-price').value);
+  const current    = parseComma(document.getElementById('current-price').value);
   const currency   = lastStock?.currency || 'KRW';
 
   if (!firstPrice || !firstQty) {
@@ -888,9 +918,15 @@ function computeResult() {
 
   const buys = [{ price: firstPrice, qty: firstQty, label: '첫 매수' }];
   document.querySelectorAll('#steps-list .step-row').forEach((row, idx) => {
-    const drop = parseFloat(row.querySelector('.drop-pct').value) || 0;
-    const qty  = parseFloat(row.querySelector('.add-qty').value)  || 0;
-    if (drop > 0 && qty > 0) buys.push({ price: firstPrice * (1 - drop / 100), qty, label: `${idx + 1}차 추가 (-${drop}%)` });
+    const qty = parseFloat(row.querySelector('.add-qty').value) || 0;
+    if (qty <= 0) return;
+    if (row.dataset.mode === 'price') {
+      const stepPrice = parseComma(row.querySelector('.step-price').value);
+      if (stepPrice > 0) buys.push({ price: stepPrice, qty, label: `${idx + 1}차 추가 (${fmtPrice(stepPrice, currency)})` });
+    } else {
+      const drop = parseFloat(row.querySelector('.drop-pct').value) || 0;
+      if (drop > 0) buys.push({ price: firstPrice * (1 - drop / 100), qty, label: `${idx + 1}차 추가 (-${drop}%)` });
+    }
   });
 
   const totalQty  = buys.reduce((s, b) => s + b.qty, 0);

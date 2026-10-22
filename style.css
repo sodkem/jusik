@@ -187,6 +187,17 @@ body {
   justify-content: space-between;
 }
 .min-tabs { display: flex; gap: 4px; }
+.ma-toggles { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.ma-label { font-size: 10px; color: var(--sub); font-weight: 600; margin-right: 2px; }
+.ma-btn {
+  font-size: 11px; font-weight: 700;
+  padding: 2px 8px; border-radius: 4px;
+  border: 1px solid var(--border);
+  background: transparent; cursor: pointer;
+  color: var(--sub);
+  transition: all .15s;
+}
+.ma-btn.on { background: var(--mc, #888); color: #fff; border-color: transparent; }
 .min-tabs.hidden { display: none; }
 .min-tab {
   padding: 4px 10px;
@@ -336,6 +347,13 @@ button { cursor: pointer; font-family: inherit; }
   border-radius: 9px;
 }
 .step-label { font-size: 11px; font-weight: 700; color: var(--blue); padding-bottom: 9px; }
+.step-mode-wrap { display: flex; gap: 2px; margin-bottom: 4px; }
+.step-mode {
+  font-size: 10px; font-weight: 600; padding: 2px 7px;
+  border-radius: 3px; border: 1px solid var(--border);
+  background: transparent; cursor: pointer; color: var(--sub);
+}
+.step-mode.active { background: var(--blue); color: #fff; border-color: transparent; }
 .btn-del {
   padding: 8px 9px;
   background: none;
@@ -472,7 +490,7 @@ tr.total-row td { font-weight: 700; border-top: 1px solid #eee; color: var(--blu
 .app.sim-mode .right-panel { display: none; }
 .app.sim-mode .main-panel {
   display: grid;
-  grid-template-columns: 1fr 360px;
+  grid-template-columns: minmax(0, 320px) 1fr;
   overflow: hidden;
 }
 .app.sim-mode .view { display: flex; }
