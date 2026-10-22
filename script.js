@@ -108,6 +108,7 @@ let currentSymbol = null;
 let currentPeriod = '1M';
 let chartInstance = null;
 let candleSeries = null;
+let volumeSeries = null;
 let rankCache = {};
 let lastStock = null;
 
@@ -160,7 +161,8 @@ async function fetchChartData(symbol, period) {
 
   const isIntraday = period === '1D' || period === '1W';
   const seen = new Set();
-  const data = [];
+  const candles = [];
+  const volumes = [];
 
   for (let i = 0; i < ts.length; i++) {
     if (q.open?.[i] == null || q.high?.[i] == null || q.low?.[i] == null || q.close?.[i] == null) continue;
@@ -169,9 +171,10 @@ async function fetchChartData(symbol, period) {
       : new Date(ts[i] * 1000).toISOString().split('T')[0];
     if (seen.has(time)) continue;
     seen.add(time);
-    data.push({ time, open: q.open[i], high: q.high[i], low: q.low[i], close: q.close[i] });
+    candles.push({ time, open: q.open[i], high: q.high[i], low: q.low[i], close: q.close[i] });
+    volumes.push({ time, value: q.volume?.[i] || 0, color: q.close[i] >= q.open[i] ? 'rgba(229,57,53,0.4)' : 'rgba(21,101,192,0.4)' });
   }
-  return data;
+  return { candles, volumes };
 }
 
 async function fetchBatchQuotes(symbols) {
@@ -196,14 +199,14 @@ function fmtPrice(n, currency) {
 // ── 차트 초기화 ───────────────────────────────────────────────────────────────
 
 function initChart() {
-  if (chartInstance) { chartInstance.remove(); chartInstance = null; candleSeries = null; }
+  if (chartInstance) { chartInstance.remove(); chartInstance = null; candleSeries = null; volumeSeries = null; }
 
   const container = document.getElementById('chart-container');
   chartInstance = LightweightCharts.createChart(container, {
     layout: { background: { color: '#ffffff' }, textColor: '#1d1d1f' },
     grid: { vertLines: { color: '#f0f0f0' }, horzLines: { color: '#f0f0f0' } },
     crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-    rightPriceScale: { borderColor: '#e5e5e7' },
+    rightPriceScale: { borderColor: '#e5e5e7', scaleMargins: { top: 0.05, bottom: 0.25 } },
     timeScale: { borderColor: '#e5e5e7', timeVisible: true, secondsVisible: false },
     width: container.clientWidth,
     height: container.clientHeight,
@@ -213,6 +216,14 @@ function initChart() {
     upColor: '#e53935', downColor: '#1565c0',
     borderUpColor: '#e53935', borderDownColor: '#1565c0',
     wickUpColor: '#e53935', wickDownColor: '#1565c0',
+  });
+
+  volumeSeries = chartInstance.addHistogramSeries({
+    priceFormat: { type: 'volume' },
+    priceScaleId: 'volume',
+  });
+  chartInstance.priceScale('volume').applyOptions({
+    scaleMargins: { top: 0.8, bottom: 0 },
   });
 
   new ResizeObserver(() => {
@@ -235,13 +246,14 @@ async function loadChart(symbol, period) {
   const data = await fetchChartData(symbol, period);
   loadingEl.classList.add('hidden');
 
-  if (!data || data.length === 0) {
+  if (!data || data.candles.length === 0) {
     emptyEl.style.display = 'flex';
     emptyEl.querySelector('p:nth-child(2)').textContent = '데이터를 불러올 수 없습니다';
     return;
   }
 
-  candleSeries.setData(data);
+  candleSeries.setData(data.candles);
+  volumeSeries.setData(data.volumes);
   chartInstance.timeScale().fitContent();
 }
 
