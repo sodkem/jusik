@@ -555,7 +555,7 @@ document.getElementById('name-input').addEventListener('input', e => {
   clearTimeout(suggestTimer);
   const q = e.target.value.trim();
   if (!q) { hideSuggestions(); return; }
-  suggestTimer = setTimeout(() => fetchSuggestions(q), 300);
+  suggestTimer = setTimeout(() => fetchSuggestions(q), 500);
 });
 document.getElementById('name-input').addEventListener('keydown', e => {
   if (e.key === 'Enter') selectFirstSuggestion();
