@@ -403,7 +403,7 @@ async function loadChart(symbol, period) {
 
   // 봉 종류에 맞는 최근 구간 자동 확대
   // 분봉은 데이터 자체가 2~5일치라 fitContent으로 충분
-  const VIEW_BARS = { 'D': 200, 'W': 80, 'M': 60 };
+  const VIEW_BARS = { 'D': 60, 'W': 60, 'M': 60, 'Y': 60 };
   if (Object.prototype.hasOwnProperty.call(VIEW_BARS, period)) {
     const n = VIEW_BARS[period];
     const total = data.candles.length;
