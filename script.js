@@ -101,6 +101,10 @@ function getDisplayName(symbol, fallback) {
   return KR_NAMES[symbol] || fallback || symbol;
 }
 
+// Yahoo Finance: range=max 요청 시 일봉/주봉을 월봉으로 다운샘플링함
+// period1/period2 방식으로 요청해야 전체 일봉/주봉 데이터를 받을 수 있음
+const PERIOD_START = 631152000; // 1990-01-01 UTC
+
 const PERIOD_CONFIG = {
   '1분':  { interval: '1m',  range: '2d',  intraday: true },
   '3분':  { interval: '1m',  range: '2d',  intraday: true, aggregate: 3 },
@@ -108,8 +112,8 @@ const PERIOD_CONFIG = {
   '10분': { interval: '5m',  range: '5d',  intraday: true, aggregate: 10 },
   '15분': { interval: '15m', range: '5d',  intraday: true },
   '30분': { interval: '30m', range: '5d',  intraday: true },
-  'D':    { interval: '1d',  range: 'max' },
-  'W':    { interval: '1wk', range: 'max' },
+  'D':    { interval: '1d',  period1: PERIOD_START },
+  'W':    { interval: '1wk', period1: PERIOD_START },
   'M':    { interval: '1mo', range: 'max' },
   'Y':    { interval: '1mo', range: 'max' },
 };
@@ -164,8 +168,14 @@ async function fetchQuote(symbol) {
 
 async function fetchChartData(symbol, period) {
   const config = PERIOD_CONFIG[period];
-  const { interval, range, intraday, aggregate } = config;
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=${interval}&range=${range}`;
+  const { interval, range, period1, intraday, aggregate } = config;
+  let url;
+  if (period1) {
+    const now = Math.floor(Date.now() / 1000);
+    url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=${interval}&period1=${period1}&period2=${now}`;
+  } else {
+    url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=${interval}&range=${range}`;
+  }
   const r = await yahooFetch(url);
   if (!r) return null;
   const j = await r.json();
