@@ -301,7 +301,7 @@ function initChart() {
       borderColor: '#e5e5e7',
       timeVisible: true,
       secondsVisible: false,
-      rightOffset: 5,
+      rightOffset: 2,
       tickMarkFormatter: (time, tickMarkType) => {
         let y, m, d, dt = null;
         if (typeof time === 'string') {
@@ -363,7 +363,7 @@ function initChart() {
   chartInstance.timeScale().subscribeVisibleLogicalRangeChange((range) => {
     updateHighLowLines();
     if (!range || allCandles.length === 0) return;
-    const maxTo = allCandles.length - 1 + 3;
+    const maxTo = allCandles.length - 1 + 2;
     if (range.to > maxTo) {
       chartInstance.timeScale().setVisibleLogicalRange({ from: range.from - (range.to - maxTo), to: maxTo });
     }
@@ -403,14 +403,14 @@ async function loadChart(symbol, period) {
 
   // 봉 종류에 맞는 최근 구간 자동 확대
   // 분봉은 데이터 자체가 2~5일치라 fitContent으로 충분
-  const VIEW_BARS = { 'D': 365, 'W': 260, 'M': 120 };
+  const VIEW_BARS = { 'D': 200, 'W': 80, 'M': 60 };
   if (Object.prototype.hasOwnProperty.call(VIEW_BARS, period)) {
     const n = VIEW_BARS[period];
     const total = data.candles.length;
     if (total > n) {
       chartInstance.timeScale().setVisibleLogicalRange({
         from: total - n,
-        to: total - 1 + 3,
+        to: total - 1 + 2,
       });
     }
   }
