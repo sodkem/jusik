@@ -294,7 +294,10 @@ function initChart() {
       rightOffset: 5,
       tickMarkFormatter: (time, tickMarkType) => {
         let y, m, d, dt = null;
-        if (typeof time === 'object' && time !== null) {
+        if (typeof time === 'string') {
+          const p = time.split('-');
+          y = +p[0]; m = +p[1]; d = +p[2];
+        } else if (typeof time === 'object' && time !== null) {
           y = time.year; m = time.month; d = time.day;
         } else {
           dt = new Date(time * 1000);
@@ -313,7 +316,10 @@ function initChart() {
       priceFormatter: makeFormatter('KRW'),
       timeFormatter: (time) => {
         let y, m, d, hh = null, mn = null;
-        if (typeof time === 'object' && time !== null) {
+        if (typeof time === 'string') {
+          const p = time.split('-');
+          y = +p[0]; m = +p[1]; d = +p[2];
+        } else if (typeof time === 'object' && time !== null) {
           y = time.year; m = time.month; d = time.day;
         } else {
           const dt = new Date(time * 1000);
@@ -341,6 +347,7 @@ function initChart() {
   });
   chartInstance.priceScale('volume').applyOptions({
     scaleMargins: { top: 0.8, bottom: 0 },
+    visible: false,
   });
 
   chartInstance.timeScale().subscribeVisibleLogicalRangeChange((range) => {
@@ -597,12 +604,24 @@ function renderSuggestions(quotes) {
 }
 
 async function fetchSuggestions(q) {
-  const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=10&newsCount=0&listsCount=0`;
-  const r = await yahooFetch(url);
-  if (!r) return;
-  const j = await r.json();
-  const quotes = (j?.quotes || []).filter(item => item.quoteType === 'EQUITY' && item.symbol);
-  renderSuggestions(quotes);
+  const lower = q.toLowerCase();
+
+  // 즉시 로컬 검색 (RANK_MARKETS 80종목)
+  const local = Object.values(RANK_MARKETS).flat()
+    .filter(s => s.name.includes(q) || s.symbol.toLowerCase().includes(lower))
+    .slice(0, 8)
+    .map(s => ({ symbol: s.symbol, shortname: s.name, quoteType: 'EQUITY' }));
+  renderSuggestions(local);
+
+  // Yahoo Finance API 검색 (추가 결과)
+  try {
+    const url = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=10&newsCount=0&listsCount=0`;
+    const r = await yahooFetch(url);
+    if (!r || !r.ok) return;
+    const j = await r.json();
+    const apiQuotes = (j?.quotes || []).filter(item => item.quoteType === 'EQUITY' && item.symbol);
+    if (apiQuotes.length) renderSuggestions(apiQuotes);
+  } catch {}
 }
 
 function selectFirstSuggestion() {
