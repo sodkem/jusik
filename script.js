@@ -758,14 +758,22 @@ async function fetchSuggestions(q) {
     .map(s => ({ symbol: s.symbol, shortname: s.name, quoteType: 'EQUITY' }));
   renderSuggestions(local);
 
-  // Yahoo Finance API 검색 (추가 결과)
+  // Yahoo Finance API 검색 (v1 → 한글 불가 시 v6 한글 전용 fallback)
   try {
-    const url = `https://query2.finance.yahoo.com/v1/finance/search?q=${q}&quotesCount=10&newsCount=0&listsCount=0`;
-    const r = await yahooFetch(url);
-    if (!r || !r.ok) return;
-    const j = await r.json();
-    const apiQuotes = (j?.quotes || []).filter(item => item.quoteType === 'EQUITY' && item.symbol);
-    if (apiQuotes.length) renderSuggestions(apiQuotes);
+    const r1 = await yahooFetch(`https://query2.finance.yahoo.com/v1/finance/search?q=${q}&quotesCount=10&newsCount=0&listsCount=0`);
+    if (r1 && r1.ok) {
+      const j = await r1.json();
+      const quotes = (j?.quotes || []).filter(item => item.quoteType === 'EQUITY' && item.symbol);
+      if (quotes.length) { renderSuggestions(quotes); return; }
+    }
+    // v6 autocomplete: 한글 검색 지원
+    const r2 = await yahooFetch(`https://query2.finance.yahoo.com/v6/finance/autocomplete?lang=ko&region=KR&query=${q}`);
+    if (r2 && r2.ok) {
+      const j2 = await r2.json();
+      const quotes2 = (j2?.ResultSet?.Result || []).filter(i => i.type === 'S').slice(0, 10)
+        .map(i => ({ symbol: i.symbol, shortname: i.name, quoteType: 'EQUITY' }));
+      if (quotes2.length) renderSuggestions(quotes2);
+    }
   } catch {}
 }
 
@@ -797,12 +805,23 @@ async function selectFirstSuggestion() {
   infoEl.innerHTML = '<span style="color:#bbb;font-size:13px">검색 중...</span>';
   infoEl.classList.remove('hidden');
   try {
-    const url = `https://query2.finance.yahoo.com/v1/finance/search?q=${q}&quotesCount=5&newsCount=0&listsCount=0`;
-    const r = await yahooFetch(url);
-    if (r && r.ok) {
-      const j = await r.json();
-      const quotes = (j?.quotes || []).filter(item => item.quoteType === 'EQUITY' && item.symbol);
-      if (quotes.length > 0) {
+    // v1 search (영어 쿼리 지원)
+    let quotes = [];
+    const r1 = await yahooFetch(`https://query2.finance.yahoo.com/v1/finance/search?q=${q}&quotesCount=5&newsCount=0&listsCount=0`);
+    if (r1 && r1.ok) {
+      const j1 = await r1.json();
+      quotes = (j1?.quotes || []).filter(item => item.quoteType === 'EQUITY' && item.symbol);
+    }
+    // v6 autocomplete fallback (한글 지원)
+    if (!quotes.length) {
+      const r2 = await yahooFetch(`https://query2.finance.yahoo.com/v6/finance/autocomplete?lang=ko&region=KR&query=${q}`);
+      if (r2 && r2.ok) {
+        const j2 = await r2.json();
+        quotes = (j2?.ResultSet?.Result || []).filter(i => i.type === 'S').slice(0, 5)
+          .map(i => ({ symbol: i.symbol, shortname: i.name, quoteType: 'EQUITY' }));
+      }
+    }
+    if (quotes.length > 0) {
         const sym = quotes[0].symbol;
         document.getElementById('name-input').value = getDisplayName(sym, quotes[0].shortname || quotes[0].longname || sym);
         loadStockBySymbol(sym);
