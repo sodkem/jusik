@@ -760,7 +760,7 @@ async function fetchSuggestions(q) {
 
   // Yahoo Finance API 검색 (추가 결과)
   try {
-    const url = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=10&newsCount=0&listsCount=0`;
+    const url = `https://query2.finance.yahoo.com/v1/finance/search?q=${q}&quotesCount=10&newsCount=0&listsCount=0`;
     const r = await yahooFetch(url);
     if (!r || !r.ok) return;
     const j = await r.json();
@@ -797,7 +797,7 @@ async function selectFirstSuggestion() {
   infoEl.innerHTML = '<span style="color:#bbb;font-size:13px">검색 중...</span>';
   infoEl.classList.remove('hidden');
   try {
-    const url = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=5&newsCount=0&listsCount=0`;
+    const url = `https://query2.finance.yahoo.com/v1/finance/search?q=${q}&quotesCount=5&newsCount=0&listsCount=0`;
     const r = await yahooFetch(url);
     if (r && r.ok) {
       const j = await r.json();
