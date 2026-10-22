@@ -175,11 +175,18 @@ async function fetchChartData(symbol, period) {
 }
 
 async function fetchBatchQuotes(symbols) {
-  const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbols.join(',')}`;
-  const r = await yahooFetch(url);
-  if (!r) return null;
-  const j = await r.json();
-  return j?.quoteResponse?.result || null;
+  const results = await Promise.all(symbols.map(async sym => {
+    const meta = await fetchQuote(sym);
+    if (!meta) return null;
+    return {
+      symbol: sym,
+      shortName: meta.shortName || sym,
+      regularMarketPrice: meta.regularMarketPrice,
+      regularMarketChangePercent: meta.regularMarketChangePercent,
+      currency: meta.currency,
+    };
+  }));
+  return results.filter(Boolean);
 }
 
 // ── 포맷 헬퍼 ─────────────────────────────────────────────────────────────────
