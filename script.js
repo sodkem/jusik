@@ -277,7 +277,19 @@ function initChart() {
         return m + '월 ' + d + '일';
       },
     },
-    localization: { priceFormatter: makeFormatter('KRW') },
+    localization: {
+      priceFormatter: makeFormatter('KRW'),
+      timeFormatter: (time) => {
+        let y, m, d;
+        if (typeof time === 'object' && time !== null) {
+          y = time.year; m = time.month; d = time.day;
+        } else {
+          const dt = new Date(time * 1000);
+          y = dt.getFullYear(); m = dt.getMonth() + 1; d = dt.getDate();
+        }
+        return y + '년 ' + m + '월 ' + d + '일';
+      },
+    },
     width: container.clientWidth,
     height: container.clientHeight,
   });
