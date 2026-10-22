@@ -113,12 +113,12 @@ let lastStock = null;
 
 // ── Yahoo Finance 헬퍼 ────────────────────────────────────────────────────────
 
+const CF_PROXY = 'https://shiny-mud-4976.sodkem93.workers.dev/?url=';
+
 async function yahooFetch(url) {
   const proxies = [
     u => u,
-    u => 'https://corsproxy.io/?' + encodeURIComponent(u),
-    u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
-    u => 'https://cors.eu.org/' + u,
+    u => CF_PROXY + encodeURIComponent(u),
   ];
   for (const proxy of proxies) {
     try {
