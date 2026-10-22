@@ -170,6 +170,17 @@ body {
 .si-change.up { color: var(--red); }
 .si-change.down { color: var(--blue-dn); }
 .si-change.flat { color: var(--sub); }
+.si-mkt-status {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 12px; font-weight: 600; color: var(--fg);
+  background: var(--card); border: 1px solid var(--border);
+  padding: 2px 8px 2px 6px; border-radius: 20px;
+  align-self: center;
+}
+.si-mkt-dot {
+  width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0;
+  box-shadow: 0 0 5px currentColor;
+}
 
 /* ── 차트 컨트롤 바 ── */
 .chart-controls {

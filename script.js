@@ -276,6 +276,38 @@ function applyCommaFmt(el) {
   el.value = digits ? Number(digits).toLocaleString('ko-KR') : '';
 }
 
+const MARKET_TZ = {
+  KS: { tz: 'Asia/Seoul',     open: [9,0],  close: [15,30] },
+  KQ: { tz: 'Asia/Seoul',     open: [9,0],  close: [15,30] },
+  T:  { tz: 'Asia/Tokyo',     open: [9,0],  close: [15,30] },
+  SS: { tz: 'Asia/Shanghai',  open: [9,30], close: [15,0]  },
+  SZ: { tz: 'Asia/Shanghai',  open: [9,30], close: [15,0]  },
+  HK: { tz: 'Asia/Hong_Kong', open: [9,30], close: [16,0]  },
+};
+
+function getMarketStatus(symbol) {
+  const suffix = symbol.includes('.') ? symbol.split('.').pop().toUpperCase() : null;
+  const info   = suffix ? MARKET_TZ[suffix] : null;
+  const isUS   = !info;
+  const tz     = info?.tz || 'America/New_York';
+  const [oH, oM]  = info?.open  || [9, 30];
+  const [cH, cM]  = info?.close || [16, 0];
+
+  const local = new Date(new Date().toLocaleString('en-US', { timeZone: tz }));
+  const day = local.getDay();
+  const t   = local.getHours() * 60 + local.getMinutes();
+  const tO  = oH * 60 + oM;
+  const tC  = cH * 60 + cM;
+
+  if (day === 0 || day === 6) return { label: '주말휴장', color: '#ff3b30' };
+  if (t >= tO && t < tC)     return { label: '장중',     color: '#34c759' };
+  if (isUS) {
+    if (t >= 4 * 60 && t < tO)   return { label: '프리마켓',    color: '#ff9500' };
+    if (t >= tC && t < 20 * 60)  return { label: '애프터마켓', color: '#ff9500' };
+  }
+  return { label: '장마감', color: '#ff3b30' };
+}
+
 function fmtPrice(n, currency) {
   if (n == null || isNaN(n)) return '-';
   if (currency === 'KRW') return n.toLocaleString('ko-KR') + '원';
@@ -555,11 +587,13 @@ async function loadStockBySymbol(symbol) {
   const sign = pct >= 0 ? '+' : '';
   const displayName = getDisplayName(symbol, meta.shortName);
 
+  const mkt = getMarketStatus(symbol);
   infoEl.innerHTML = `
     <span class="si-name">${displayName}</span>
     <span class="si-ticker">${symbol}</span>
     <span class="si-price">${fmtPrice(meta.regularMarketPrice, currency)}</span>
     <span class="si-change ${cls}">${sign}${(meta.regularMarketChange || 0).toFixed(2)} (${sign}${pct.toFixed(2)}%)</span>
+    <span class="si-mkt-status"><span class="si-mkt-dot" style="background:${mkt.color}"></span>${mkt.label}</span>
   `;
 
   document.getElementById('btn-to-sim').classList.remove('hidden');
