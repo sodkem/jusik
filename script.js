@@ -414,6 +414,7 @@ function initChart() {
     upColor: '#e53935', downColor: '#1565c0',
     borderUpColor: '#e53935', borderDownColor: '#1565c0',
     wickUpColor: '#e53935', wickDownColor: '#1565c0',
+    lastValueVisible: false,
   });
 
   volumeSeries = chartInstance.addHistogramSeries({
@@ -505,7 +506,7 @@ async function loadChart(symbol, period) {
     color: '#ff9500',
     lineWidth: 1,
     lineStyle: LightweightCharts.LineStyle.Dashed,
-    axisLabelVisible: false,
+    axisLabelVisible: true,
     title: '',
   });
   chartInstance.applyOptions({ localization: { priceFormatter: makeFormatter(currentCurrency) } });
