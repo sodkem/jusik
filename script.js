@@ -273,8 +273,8 @@ function initChart() {
         const mm = String(m).padStart(2, '0');
         const dd = String(d).padStart(2, '0');
         if (tickMarkType === 0) return y + '년';
-        if (tickMarkType === 1) return y + '.' + mm;
-        return mm + '.' + dd;
+        if (tickMarkType === 1) return m + '월';
+        return m + '월 ' + d + '일';
       },
     },
     localization: { priceFormatter: makeFormatter('KRW') },
