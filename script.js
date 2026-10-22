@@ -400,17 +400,26 @@ async function loadChart(symbol, period) {
   candleSeries.setData(data.candles);
   volumeSeries.setData(data.volumes);
 
-  // 현재가 라인 - 마지막 봉 종가 (장 마감 시 종가, 장중 시 현재가)
-  try { if (currentPriceLine) candleSeries.removePriceLine(currentPriceLine); } catch {}
+  // 현재가 라인 - 마지막 봉 종가 (최고/최저와 겹치면 생략)
+  try { if (currentPriceLine) candleSeries.removePriceLine(currentPriceLine); currentPriceLine = null; } catch {}
   const lastClose = data.candles[data.candles.length - 1].close;
-  currentPriceLine = candleSeries.createPriceLine({
-    price: lastClose,
-    color: '#ff9500',
-    lineWidth: 1,
-    lineStyle: LightweightCharts.LineStyle.Dashed,
-    axisLabelVisible: true,
-    title: '',
-  });
+  const allHighs = data.candles.map(c => c.high);
+  const allLows  = data.candles.map(c => c.low);
+  const maxHigh  = Math.max(...allHighs);
+  const minLow   = Math.min(...allLows);
+  const range    = maxHigh - minLow || 1;
+  const tooClose = Math.abs(lastClose - maxHigh) / range < 0.01
+                || Math.abs(lastClose - minLow)  / range < 0.01;
+  if (!tooClose) {
+    currentPriceLine = candleSeries.createPriceLine({
+      price: lastClose,
+      color: '#ff9500',
+      lineWidth: 1,
+      lineStyle: LightweightCharts.LineStyle.Dashed,
+      axisLabelVisible: true,
+      title: '',
+    });
+  }
   chartInstance.applyOptions({ localization: { priceFormatter: makeFormatter(currentCurrency) } });
   chartInstance.timeScale().fitContent();
 
