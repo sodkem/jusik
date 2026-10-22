@@ -117,6 +117,10 @@ let candleSeries = null;
 let volumeSeries = null;
 let rankCache = {};
 let lastStock = null;
+let currentCurrency = 'KRW';
+let allCandles = [];
+let highPriceLine = null;
+let lowPriceLine = null;
 
 // ── Yahoo Finance 헬퍼 ────────────────────────────────────────────────────────
 
@@ -217,10 +221,35 @@ function fmtPrice(n, currency) {
   return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+// ── 차트 헬퍼 ─────────────────────────────────────────────────────────────────
+
+function makeFormatter(currency) {
+  if (currency === 'KRW') return p => Math.round(p).toLocaleString('ko-KR') + '원';
+  if (currency === 'JPY') return p => '¥' + Math.round(p).toLocaleString('ja-JP');
+  return p => '$' + p.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function updateHighLowLines() {
+  if (!candleSeries || allCandles.length === 0) return;
+  const range = chartInstance.timeScale().getVisibleLogicalRange();
+  if (!range) return;
+  const from = Math.max(0, Math.floor(range.from));
+  const to   = Math.min(allCandles.length - 1, Math.ceil(range.to));
+  if (from > to) return;
+  const visible = allCandles.slice(from, to + 1);
+  const maxHigh = Math.max(...visible.map(c => c.high));
+  const minLow  = Math.min(...visible.map(c => c.low));
+  try { if (highPriceLine) candleSeries.removePriceLine(highPriceLine); } catch {}
+  try { if (lowPriceLine)  candleSeries.removePriceLine(lowPriceLine);  } catch {}
+  highPriceLine = candleSeries.createPriceLine({ price: maxHigh, color: '#e53935', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dashed, axisLabelVisible: true, title: '최고' });
+  lowPriceLine  = candleSeries.createPriceLine({ price: minLow,  color: '#1565c0', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dashed, axisLabelVisible: true, title: '최저' });
+}
+
 // ── 차트 초기화 ───────────────────────────────────────────────────────────────
 
 function initChart() {
   if (chartInstance) { chartInstance.remove(); chartInstance = null; candleSeries = null; volumeSeries = null; }
+  highPriceLine = null; lowPriceLine = null; allCandles = [];
 
   const container = document.getElementById('chart-container');
   chartInstance = LightweightCharts.createChart(container, {
@@ -228,7 +257,27 @@ function initChart() {
     grid: { vertLines: { color: '#f0f0f0' }, horzLines: { color: '#f0f0f0' } },
     crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
     rightPriceScale: { borderColor: '#e5e5e7', scaleMargins: { top: 0.05, bottom: 0.25 } },
-    timeScale: { borderColor: '#e5e5e7', timeVisible: true, secondsVisible: false },
+    timeScale: {
+      borderColor: '#e5e5e7',
+      timeVisible: true,
+      secondsVisible: false,
+      rightOffset: 5,
+      tickMarkFormatter: (time, tickMarkType) => {
+        let y, m, d;
+        if (typeof time === 'object' && time !== null) {
+          y = time.year; m = time.month; d = time.day;
+        } else {
+          const dt = new Date(time * 1000);
+          y = dt.getFullYear(); m = dt.getMonth() + 1; d = dt.getDate();
+        }
+        const mm = String(m).padStart(2, '0');
+        const dd = String(d).padStart(2, '0');
+        if (tickMarkType === 0) return y + '년';
+        if (tickMarkType === 1) return y + '.' + mm;
+        return mm + '.' + dd;
+      },
+    },
+    localization: { priceFormatter: makeFormatter('KRW') },
     width: container.clientWidth,
     height: container.clientHeight,
   });
@@ -246,6 +295,8 @@ function initChart() {
   chartInstance.priceScale('volume').applyOptions({
     scaleMargins: { top: 0.8, bottom: 0 },
   });
+
+  chartInstance.timeScale().subscribeVisibleLogicalRangeChange(updateHighLowLines);
 
   new ResizeObserver(() => {
     if (chartInstance) {
@@ -273,9 +324,12 @@ async function loadChart(symbol, period) {
     return;
   }
 
+  allCandles = data.candles;
   candleSeries.setData(data.candles);
   volumeSeries.setData(data.volumes);
+  chartInstance.applyOptions({ localization: { priceFormatter: makeFormatter(currentCurrency) } });
   chartInstance.timeScale().fitContent();
+  updateHighLowLines();
 }
 
 // ── 종목 검색 ─────────────────────────────────────────────────────────────────
@@ -312,6 +366,7 @@ async function searchStock() {
   }
 
   const currency = meta.currency || 'USD';
+  currentCurrency = currency;
   currentSymbol = symbol;
 
   const pct  = meta.regularMarketChangePercent || 0;
