@@ -400,6 +400,21 @@ async function loadChart(symbol, period) {
   volumeSeries.setData(data.volumes);
   chartInstance.applyOptions({ localization: { priceFormatter: makeFormatter(currentCurrency) } });
   chartInstance.timeScale().fitContent();
+
+  // 봉 종류에 맞는 최근 구간 자동 확대
+  // 분봉은 데이터 자체가 2~5일치라 fitContent으로 충분
+  const VIEW_BARS = { 'D': 365, 'W': 260, 'M': 120 };
+  if (Object.prototype.hasOwnProperty.call(VIEW_BARS, period)) {
+    const n = VIEW_BARS[period];
+    const total = data.candles.length;
+    if (total > n) {
+      chartInstance.timeScale().setVisibleLogicalRange({
+        from: total - n,
+        to: total - 1 + 3,
+      });
+    }
+  }
+
   updateHighLowLines();
 }
 
