@@ -93,6 +93,14 @@ const RANK_MARKETS = {
   ],
 };
 
+// 심볼 → 한글 이름 매핑 (모든 시장)
+const KR_NAMES = {};
+Object.values(RANK_MARKETS).flat().forEach(({ symbol, name }) => { KR_NAMES[symbol] = name; });
+
+function getDisplayName(symbol, fallback) {
+  return KR_NAMES[symbol] || fallback || symbol;
+}
+
 const PERIOD_CONFIG = {
   '1D': { interval: '5m',  range: '1d' },
   '1W': { interval: '1h',  range: '5d' },
@@ -296,16 +304,17 @@ async function searchStock() {
   const pct  = meta.regularMarketChangePercent || 0;
   const cls  = pct > 0 ? 'up' : pct < 0 ? 'down' : 'flat';
   const sign = pct >= 0 ? '+' : '';
+  const displayName = getDisplayName(symbol, meta.shortName);
 
   infoEl.innerHTML = `
-    <span class="si-name">${meta.shortName || symbol}</span>
+    <span class="si-name">${displayName}</span>
     <span class="si-ticker">${symbol}</span>
     <span class="si-price">${fmtPrice(meta.regularMarketPrice, currency)}</span>
     <span class="si-change ${cls}">${sign}${(meta.regularMarketChange || 0).toFixed(2)} (${sign}${pct.toFixed(2)}%)</span>
   `;
 
   document.getElementById('btn-to-sim').classList.remove('hidden');
-  lastStock = { symbol, name: meta.shortName || symbol, price: meta.regularMarketPrice, currency };
+  lastStock = { symbol, name: displayName, price: meta.regularMarketPrice, currency };
 
   await loadChart(symbol, currentPeriod);
 }
