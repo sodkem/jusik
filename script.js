@@ -131,6 +131,7 @@ let currentCurrency = 'KRW';
 let allCandles = [];
 let highPriceLine = null;
 let lowPriceLine = null;
+let currentPriceLine = null;
 
 // ── Yahoo Finance 헬퍼 ────────────────────────────────────────────────────────
 
@@ -453,6 +454,19 @@ async function loadStockBySymbol(symbol) {
   lastStock = { symbol, name: displayName, price: meta.regularMarketPrice, currency };
 
   await loadChart(symbol, currentPeriod);
+
+  // 현재가 라인
+  if (candleSeries) {
+    try { if (currentPriceLine) candleSeries.removePriceLine(currentPriceLine); } catch {}
+    currentPriceLine = candleSeries.createPriceLine({
+      price: meta.regularMarketPrice,
+      color: '#ff9500',
+      lineWidth: 1,
+      lineStyle: LightweightCharts.LineStyle.Dashed,
+      axisLabelVisible: true,
+      title: '현재',
+    });
+  }
 }
 
 // ── 주기 탭 ───────────────────────────────────────────────────────────────────
@@ -663,16 +677,21 @@ function selectFirstSuggestion() {
     loadStockBySymbol(first.dataset.symbol);
     return;
   }
-  // 자동완성 없으면 로컬에서 첫 번째 일치 종목 검색
   const q = document.getElementById('name-input').value.trim();
   if (!q) return;
   const lower = q.toLowerCase();
+  // 로컬 목록에서 검색
   const match = Object.values(RANK_MARKETS).flat()
     .find(s => s.name.includes(q) || s.symbol.toLowerCase().includes(lower));
   if (match) {
     document.getElementById('name-input').value = match.name;
+    hideSuggestions();
     loadStockBySymbol(match.symbol);
+    return;
   }
+  // 마지막 수단: 입력값을 심볼로 직접 시도 (예: AAPL, 005930.KS)
+  hideSuggestions();
+  loadStockBySymbol(q.toUpperCase());
 }
 
 let suggestTimer = null;
@@ -687,7 +706,7 @@ document.getElementById('name-input').addEventListener('keydown', e => {
   if (e.key === 'Escape') hideSuggestions();
 });
 document.addEventListener('click', e => {
-  if (!e.target.closest('.search-name-wrap')) hideSuggestions();
+  if (!e.target.closest('.search-name-wrap') && e.target.id !== 'btn-search') hideSuggestions();
 });
 
 // ── 검색 이벤트 ───────────────────────────────────────────────────────────────
