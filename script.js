@@ -277,24 +277,24 @@ function applyCommaFmt(el) {
 }
 
 const MARKET_TZ = {
-  KS: { name: '한국 (KSE)',     tz: 'Asia/Seoul',     open: [9,0],  close: [15,30] },
-  KQ: { name: '한국 (KOSDAQ)',  tz: 'Asia/Seoul',     open: [9,0],  close: [15,30] },
-  T:  { name: '일본 (TSE)',     tz: 'Asia/Tokyo',     open: [9,0],  close: [15,30] },
-  SS: { name: '중국 (상하이)',  tz: 'Asia/Shanghai',  open: [9,30], close: [15,0]  },
-  SZ: { name: '중국 (선전)',    tz: 'Asia/Shanghai',  open: [9,30], close: [15,0]  },
-  HK: { name: '홍콩 (HKEX)',   tz: 'Asia/Hong_Kong', open: [9,30], close: [16,0]  },
+  KS: { name: '한국 (KSE)',    tz: 'Asia/Seoul',     open: [9,0],  close: [15,30], pre: [8,0],  after: [18,0],  preLabel: '장전시간외', afterLabel: '장후시간외' },
+  KQ: { name: '한국 (KOSDAQ)', tz: 'Asia/Seoul',     open: [9,0],  close: [15,30], pre: [8,0],  after: [18,0],  preLabel: '장전시간외', afterLabel: '장후시간외' },
+  T:  { name: '일본 (TSE)',    tz: 'Asia/Tokyo',     open: [9,0],  close: [15,30], pre: [8,0],  after: [16,30], preLabel: '장전거래',   afterLabel: '장후거래'   },
+  SS: { name: '중국 (상하이)', tz: 'Asia/Shanghai',  open: [9,30], close: [15,0]  },
+  SZ: { name: '중국 (선전)',   tz: 'Asia/Shanghai',  open: [9,30], close: [15,0]  },
+  HK: { name: '홍콩 (HKEX)',  tz: 'Asia/Hong_Kong', open: [9,30], close: [16,0]  },
 };
 
 function pad2(n) { return String(n).padStart(2, '0'); }
 
 function getMarketStatus(symbol) {
-  const suffix = symbol.includes('.') ? symbol.split('.').pop().toUpperCase() : null;
-  const info   = suffix ? MARKET_TZ[suffix] : null;
-  const isUS   = !info;
+  const suffix  = symbol.includes('.') ? symbol.split('.').pop().toUpperCase() : null;
+  const info    = suffix ? MARKET_TZ[suffix] : null;
+  const isUS    = !info;
   const mktName = info?.name || '미국 (NYSE/NASDAQ)';
   const tz      = info?.tz   || 'America/New_York';
-  const [oH, oM]  = info?.open  || [9, 30];
-  const [cH, cM]  = info?.close || [16, 0];
+  const [oH, oM] = info?.open  || [9, 30];
+  const [cH, cM] = info?.close || [16, 0];
 
   const local = new Date(new Date().toLocaleString('en-US', { timeZone: tz }));
   const day = local.getDay();
@@ -303,14 +303,27 @@ function getMarketStatus(symbol) {
   const tC  = cH * 60 + cM;
 
   const hoursLine = `정규장 ${pad2(oH)}:${pad2(oM)} – ${pad2(cH)}:${pad2(cM)}`;
-  const preAfter  = isUS ? '\n프리마켓 04:00 – 09:30\n애프터마켓 16:00 – 20:00' : '';
-  const tooltip   = `${mktName}\n${hoursLine}${preAfter}`;
+  let extLines = '';
+  if (isUS) {
+    extLines = '\n프리마켓 04:00 – 09:30\n애프터마켓 16:00 – 20:00';
+  } else if (info?.pre) {
+    const [pH, pM] = info.pre;
+    const [aH, aM] = info.after;
+    extLines = `\n${info.preLabel} ${pad2(pH)}:${pad2(pM)} – ${pad2(oH)}:${pad2(oM)}\n${info.afterLabel} ${pad2(cH)}:${pad2(cM)} – ${pad2(aH)}:${pad2(aM)}`;
+  }
+  const tooltip = `${mktName}\n${hoursLine}${extLines}`;
 
   if (day === 0 || day === 6) return { label: '주말휴장', color: '#ff3b30', tooltip };
   if (t >= tO && t < tC)     return { label: '장중',     color: '#34c759', tooltip };
+
   if (isUS) {
     if (t >= 4 * 60 && t < tO)   return { label: '프리마켓',    color: '#ff9500', tooltip };
     if (t >= tC && t < 20 * 60)  return { label: '애프터마켓', color: '#ff9500', tooltip };
+  } else if (info?.pre) {
+    const tPre   = info.pre[0]   * 60 + info.pre[1];
+    const tAfter = info.after[0] * 60 + info.after[1];
+    if (t >= tPre && t < tO) return { label: info.preLabel,   color: '#ff9500', tooltip };
+    if (t >= tC   && t < tAfter) return { label: info.afterLabel, color: '#ff9500', tooltip };
   }
   return { label: '장마감', color: '#ff3b30', tooltip };
 }
