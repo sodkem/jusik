@@ -856,11 +856,10 @@ async function selectFirstSuggestion() {
       }
     }
     if (quotes.length > 0) {
-        const sym = quotes[0].symbol;
-        document.getElementById('name-input').value = getDisplayName(sym, quotes[0].shortname || quotes[0].longname || sym);
-        loadStockBySymbol(sym);
-        return;
-      }
+      const sym = quotes[0].symbol;
+      document.getElementById('name-input').value = getDisplayName(sym, quotes[0].shortname || quotes[0].longname || sym);
+      loadStockBySymbol(sym);
+      return;
     }
   } catch {}
 
