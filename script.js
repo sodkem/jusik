@@ -399,6 +399,18 @@ async function loadChart(symbol, period) {
   allCandles = data.candles;
   candleSeries.setData(data.candles);
   volumeSeries.setData(data.volumes);
+
+  // 현재가 라인 - 마지막 봉 종가 (장 마감 시 종가, 장중 시 현재가)
+  try { if (currentPriceLine) candleSeries.removePriceLine(currentPriceLine); } catch {}
+  const lastClose = data.candles[data.candles.length - 1].close;
+  currentPriceLine = candleSeries.createPriceLine({
+    price: lastClose,
+    color: '#ff9500',
+    lineWidth: 1,
+    lineStyle: LightweightCharts.LineStyle.Dashed,
+    axisLabelVisible: true,
+    title: '현재',
+  });
   chartInstance.applyOptions({ localization: { priceFormatter: makeFormatter(currentCurrency) } });
   chartInstance.timeScale().fitContent();
 
@@ -454,19 +466,6 @@ async function loadStockBySymbol(symbol) {
   lastStock = { symbol, name: displayName, price: meta.regularMarketPrice, currency };
 
   await loadChart(symbol, currentPeriod);
-
-  // 현재가 라인
-  if (candleSeries) {
-    try { if (currentPriceLine) candleSeries.removePriceLine(currentPriceLine); } catch {}
-    currentPriceLine = candleSeries.createPriceLine({
-      price: meta.regularMarketPrice,
-      color: '#ff9500',
-      lineWidth: 1,
-      lineStyle: LightweightCharts.LineStyle.Dashed,
-      axisLabelVisible: true,
-      title: '현재',
-    });
-  }
 }
 
 // ── 주기 탭 ───────────────────────────────────────────────────────────────────
