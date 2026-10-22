@@ -531,3 +531,7 @@ function computeResult() {
 // ── 초기화 ────────────────────────────────────────────────────────────────────
 
 loadRankings('KR');
+
+// 기본 차트: 한국 시총 1위 (삼성전자)
+document.getElementById('ticker-input').value = '005930.KS';
+searchStock();
