@@ -175,18 +175,12 @@ async function fetchChartData(symbol, period) {
 }
 
 async function fetchBatchQuotes(symbols) {
-  const results = await Promise.all(symbols.map(async sym => {
-    const meta = await fetchQuote(sym);
-    if (!meta) return null;
-    return {
-      symbol: sym,
-      shortName: meta.shortName || sym,
-      regularMarketPrice: meta.regularMarketPrice,
-      regularMarketChangePercent: meta.regularMarketChangePercent,
-      currency: meta.currency,
-    };
-  }));
-  return results.filter(Boolean);
+  try {
+    const url = CF_PROXY.replace('?url=', '') + '?symbols=' + symbols.join(',');
+    const r = await fetch(url);
+    if (r.ok) return await r.json();
+  } catch {}
+  return null;
 }
 
 // ── 포맷 헬퍼 ─────────────────────────────────────────────────────────────────
