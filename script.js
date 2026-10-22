@@ -446,11 +446,11 @@ function initChart() {
     }
   });
 
-  // 현재가 호버 라벨
+  // 현재가 호버 라벨 (마우스 커서 옆에 따라다님)
   if (currentHoverLabel) currentHoverLabel.remove();
   currentHoverLabel = document.createElement('div');
   currentHoverLabel.textContent = '현재가';
-  currentHoverLabel.style.cssText = 'position:absolute;right:58px;background:#ff9500;color:#fff;padding:2px 7px;border-radius:3px;font-size:11px;font-weight:700;pointer-events:none;display:none;z-index:10;white-space:nowrap;';
+  currentHoverLabel.style.cssText = 'position:absolute;background:#ff9500;color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;pointer-events:none;display:none;z-index:10;white-space:nowrap;transform:translate(10px,-50%);';
   container.style.position = 'relative';
   container.appendChild(currentHoverLabel);
 
@@ -462,7 +462,8 @@ function initChart() {
     const priceY = candleSeries.priceToCoordinate(currentClosePrice);
     if (priceY !== null && Math.abs(param.point.y - priceY) < 8) {
       currentHoverLabel.style.display = 'block';
-      currentHoverLabel.style.top = (priceY - 10) + 'px';
+      currentHoverLabel.style.left = param.point.x + 'px';
+      currentHoverLabel.style.top  = priceY + 'px';
     } else {
       currentHoverLabel.style.display = 'none';
     }
