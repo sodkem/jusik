@@ -133,6 +133,7 @@ let highPriceLine = null;
 let lowPriceLine = null;
 let currentPriceLine = null;
 let currentClosePrice = null;
+let quoteMarketPrice  = null;
 let currentHoverLabel = null;
 
 const MA_DEFS = [
@@ -487,9 +488,9 @@ async function loadChart(symbol, period) {
   candleSeries.setData(data.candles);
   volumeSeries.setData(data.volumes);
 
-  // 현재가 라인 - 마지막 봉 종가 (호버 시 "현재가" 라벨 표시)
+  // 현재가 라인 - quote API의 regularMarketPrice 사용 (분봉 마지막 캔들과 오차 방지)
   try { if (currentPriceLine) candleSeries.removePriceLine(currentPriceLine); currentPriceLine = null; } catch {}
-  currentClosePrice = data.candles[data.candles.length - 1].close;
+  currentClosePrice = quoteMarketPrice ?? data.candles[data.candles.length - 1].close;
   currentPriceLine = candleSeries.createPriceLine({
     price: currentClosePrice,
     color: '#ff9500',
@@ -552,6 +553,7 @@ async function loadStockBySymbol(symbol) {
 
   document.getElementById('btn-to-sim').classList.remove('hidden');
   lastStock = { symbol, name: displayName, price: meta.regularMarketPrice, currency };
+  quoteMarketPrice = meta.regularMarketPrice;
 
   await loadChart(symbol, currentPeriod);
 }
