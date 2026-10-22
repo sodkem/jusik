@@ -114,14 +114,18 @@ let lastStock = null;
 // ── Yahoo Finance 헬퍼 ────────────────────────────────────────────────────────
 
 async function yahooFetch(url) {
-  try {
-    const r = await fetch(url);
-    if (r.ok) return r;
-  } catch {}
-  try {
-    const r = await fetch('https://corsproxy.io/?' + encodeURIComponent(url));
-    if (r.ok) return r;
-  } catch {}
+  const proxies = [
+    u => u,
+    u => 'https://corsproxy.io/?' + encodeURIComponent(u),
+    u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
+    u => 'https://cors.eu.org/' + u,
+  ];
+  for (const proxy of proxies) {
+    try {
+      const r = await fetch(proxy(url));
+      if (r.ok) return r;
+    } catch {}
+  }
   return null;
 }
 
