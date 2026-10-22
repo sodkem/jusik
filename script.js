@@ -595,10 +595,8 @@ function renderSuggestions(quotes) {
   el.querySelectorAll('.sug-item').forEach(item => {
     item.addEventListener('mousedown', e => {
       e.preventDefault();
-      document.getElementById('ticker-input').value = item.dataset.symbol;
       document.getElementById('name-input').value = item.dataset.name;
-      hideSuggestions();
-      searchStock();
+      loadStockBySymbol(item.dataset.symbol);
     });
   });
 }
@@ -630,6 +628,17 @@ function selectFirstSuggestion() {
     document.getElementById('name-input').value = first.dataset.name;
     hideSuggestions();
     loadStockBySymbol(first.dataset.symbol);
+    return;
+  }
+  // 자동완성 없으면 로컬에서 첫 번째 일치 종목 검색
+  const q = document.getElementById('name-input').value.trim();
+  if (!q) return;
+  const lower = q.toLowerCase();
+  const match = Object.values(RANK_MARKETS).flat()
+    .find(s => s.name.includes(q) || s.symbol.toLowerCase().includes(lower));
+  if (match) {
+    document.getElementById('name-input').value = match.name;
+    loadStockBySymbol(match.symbol);
   }
 }
 
