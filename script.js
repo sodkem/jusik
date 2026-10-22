@@ -669,7 +669,7 @@ async function fetchSuggestions(q) {
   } catch {}
 }
 
-function selectFirstSuggestion() {
+async function selectFirstSuggestion() {
   const first = document.querySelector('#name-suggestions .sug-item');
   if (first) {
     document.getElementById('name-input').value = first.dataset.name;
@@ -680,6 +680,7 @@ function selectFirstSuggestion() {
   const q = document.getElementById('name-input').value.trim();
   if (!q) return;
   const lower = q.toLowerCase();
+
   // 로컬 목록에서 검색
   const match = Object.values(RANK_MARKETS).flat()
     .find(s => s.name.includes(q) || s.symbol.toLowerCase().includes(lower));
@@ -689,8 +690,28 @@ function selectFirstSuggestion() {
     loadStockBySymbol(match.symbol);
     return;
   }
-  // 마지막 수단: 입력값을 심볼로 직접 시도 (예: AAPL, 005930.KS)
+
+  // 자동완성이 아직 안 떴으면 야후 API 직접 호출
   hideSuggestions();
+  const infoEl = document.getElementById('stock-info');
+  infoEl.innerHTML = '<span style="color:#bbb;font-size:13px">검색 중...</span>';
+  infoEl.classList.remove('hidden');
+  try {
+    const url = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=5&newsCount=0&listsCount=0`;
+    const r = await yahooFetch(url);
+    if (r && r.ok) {
+      const j = await r.json();
+      const quotes = (j?.quotes || []).filter(item => item.quoteType === 'EQUITY' && item.symbol);
+      if (quotes.length > 0) {
+        const sym = quotes[0].symbol;
+        document.getElementById('name-input').value = getDisplayName(sym, quotes[0].shortname || quotes[0].longname || sym);
+        loadStockBySymbol(sym);
+        return;
+      }
+    }
+  } catch {}
+
+  // 마지막 수단: 입력값을 심볼로 직접 시도 (예: AAPL, 005930.KS)
   loadStockBySymbol(q.toUpperCase());
 }
 
