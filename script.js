@@ -560,15 +560,23 @@ document.querySelectorAll('.rank-tab').forEach(btn => {
 // ── 뷰 전환 ───────────────────────────────────────────────────────────────────
 
 function switchView(name) {
-  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  document.getElementById('view-' + name).classList.add('active');
+  const app = document.querySelector('.app');
+  if (name === 'sim') {
+    app.classList.add('sim-mode');
+    document.getElementById('view-chart').classList.add('active');
+    document.getElementById('view-sim').classList.add('active');
+  } else {
+    app.classList.remove('sim-mode');
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById('view-' + name).classList.add('active');
+  }
   document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.view === name));
 
-  if (name === 'chart' && chartInstance) {
+  if (chartInstance) {
     setTimeout(() => {
       const c = document.getElementById('chart-container');
       chartInstance.resize(c.clientWidth, c.clientHeight);
-    }, 30);
+    }, 50);
   }
 }
 

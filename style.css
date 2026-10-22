@@ -465,6 +465,22 @@ tr.total-row td { font-weight: 700; border-top: 1px solid #eee; color: var(--blu
 .rank-updated { font-size: 10px; color: #ccc; text-align: right; margin-top: 8px; }
 .rank-error { font-size: 12px; color: #ff3b30; text-align: center; padding: 16px 0; }
 
+/* ── 시뮬레이터 + 차트 동시 표시 ── */
+.app.sim-mode {
+  grid-template-columns: var(--sidebar-w) 1fr;
+}
+.app.sim-mode .right-panel { display: none; }
+.app.sim-mode .main-panel {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  overflow: hidden;
+}
+.app.sim-mode .view { display: flex; }
+.app.sim-mode #view-sim {
+  border-left: 1px solid var(--border);
+  overflow: hidden;
+}
+
 /* ── 반응형 ── */
 @media (max-width: 768px) {
   .sidebar { display: none; }
@@ -475,4 +491,9 @@ tr.total-row td { font-weight: 700; border-top: 1px solid #eee; color: var(--blu
   .view { height: auto; }
   .view.active { display: flex; flex-direction: column; }
   .chart-container { height: 300px; flex: none; }
+  .app.sim-mode .main-panel {
+    grid-template-columns: 1fr;
+    grid-template-rows: 300px auto;
+  }
+  .app.sim-mode #view-chart { height: 300px; flex: none; }
 }
