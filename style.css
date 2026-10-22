@@ -117,7 +117,6 @@ body {
   font-family: inherit;
 }
 .chart-search input:focus { outline: none; border-color: var(--blue); }
-.search-code { flex: 0 0 160px; width: 160px !important; }
 
 .suggestions {
   position: absolute;

@@ -344,13 +344,10 @@ async function loadChart(symbol, period) {
   updateHighLowLines();
 }
 
-// ── 종목 검색 ─────────────────────────────────────────────────────────────────
+// ── 종목 로드 ─────────────────────────────────────────────────────────────────
 
-async function searchStock() {
-  const raw = document.getElementById('ticker-input').value.trim();
-  if (!raw) return;
-  const symbol = detectMarket(raw);
-
+async function loadStockBySymbol(symbol) {
+  hideSuggestions();
   const infoEl = document.getElementById('stock-info');
   infoEl.innerHTML = '<span style="color:#bbb;font-size:13px">조회 중...</span>';
   infoEl.classList.remove('hidden');
@@ -448,10 +445,10 @@ function renderRankings(data) {
 
   list.querySelectorAll('.rank-item').forEach(el => {
     el.addEventListener('click', () => {
-      document.getElementById('ticker-input').value = el.dataset.symbol;
-      document.getElementById('name-input').value = '';
+      const rankName = el.querySelector('.rank-name').textContent;
+      document.getElementById('name-input').value = rankName;
       switchView('chart');
-      searchStock();
+      loadStockBySymbol(el.dataset.symbol);
     });
   });
 }
@@ -492,6 +489,7 @@ document.getElementById('btn-to-sim').addEventListener('click', () => {
     badge.textContent = `${lastStock.name}  ${fmtPrice(lastStock.price, lastStock.currency)}`;
     badge.classList.remove('hidden');
   }
+  hideSuggestions();
   switchView('sim');
   computeResult();
 });
@@ -539,8 +537,17 @@ async function fetchSuggestions(q) {
   const r = await yahooFetch(url);
   if (!r) return;
   const j = await r.json();
-  const quotes = (j?.quotes || []).filter(q => q.quoteType === 'EQUITY' && q.symbol);
+  const quotes = (j?.quotes || []).filter(item => item.quoteType === 'EQUITY' && item.symbol);
   renderSuggestions(quotes);
+}
+
+function selectFirstSuggestion() {
+  const first = document.querySelector('#name-suggestions .sug-item');
+  if (first) {
+    document.getElementById('name-input').value = first.dataset.name;
+    hideSuggestions();
+    loadStockBySymbol(first.dataset.symbol);
+  }
 }
 
 let suggestTimer = null;
@@ -551,7 +558,7 @@ document.getElementById('name-input').addEventListener('input', e => {
   suggestTimer = setTimeout(() => fetchSuggestions(q), 300);
 });
 document.getElementById('name-input').addEventListener('keydown', e => {
-  if (e.key === 'Enter') { hideSuggestions(); searchStock(); }
+  if (e.key === 'Enter') selectFirstSuggestion();
   if (e.key === 'Escape') hideSuggestions();
 });
 document.addEventListener('click', e => {
@@ -560,8 +567,7 @@ document.addEventListener('click', e => {
 
 // ── 검색 이벤트 ───────────────────────────────────────────────────────────────
 
-document.getElementById('btn-search').addEventListener('click', searchStock);
-document.getElementById('ticker-input').addEventListener('keydown', e => { if (e.key === 'Enter') searchStock(); });
+document.getElementById('btn-search').addEventListener('click', selectFirstSuggestion);
 
 // ── 시뮬레이터 ───────────────────────────────────────────────────────────────
 
@@ -681,5 +687,5 @@ function computeResult() {
 loadRankings('KR');
 
 // 기본 차트: 한국 시총 1위 (삼성전자)
-document.getElementById('ticker-input').value = '005930.KS';
-searchStock();
+document.getElementById('name-input').value = '삼성전자';
+loadStockBySymbol('005930.KS');
