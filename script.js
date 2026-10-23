@@ -127,6 +127,7 @@ let candleSeries = null;
 let volumeSeries = null;
 let rankCache = {};
 let lastStock = null;
+let autoRefreshTimer = null;
 let currentCurrency = 'KRW';
 let allCandles = [];
 let highPriceLine = null;
@@ -621,6 +622,44 @@ async function loadStockBySymbol(symbol) {
   quoteMarketPrice = meta.regularMarketPrice;
 
   await loadChart(symbol, currentPeriod);
+  startAutoRefresh(symbol);
+}
+
+async function refreshPrice(symbol) {
+  const meta = await fetchQuote(symbol);
+  if (!meta || !meta.regularMarketPrice) return;
+
+  const currency = meta.currency || 'KRW';
+  const pct  = meta.regularMarketChangePercent || 0;
+  const cls  = pct >= 0 ? 'up' : 'down';
+  const sign = pct >= 0 ? '+' : '';
+  const mkt  = getMarketStatus(symbol);
+
+  const infoEl = document.getElementById('stock-info');
+  if (infoEl) {
+    infoEl.innerHTML = `
+      <span class="si-name">${meta.longName || meta.shortName || symbol}</span>
+      <span class="si-ticker">${symbol}</span>
+      <span class="si-price">${fmtPrice(meta.regularMarketPrice, currency)}</span>
+      <span class="si-change ${cls}">${sign}${(meta.regularMarketChange || 0).toFixed(2)} (${sign}${pct.toFixed(2)}%)</span>
+      <span class="si-mkt-status" title="${mkt.tooltip}"><span class="si-mkt-dot" style="background:${mkt.color}"></span>${mkt.label}</span>
+    `;
+  }
+
+  quoteMarketPrice = meta.regularMarketPrice;
+  lastStock = { ...lastStock, price: meta.regularMarketPrice };
+
+  if (currentPriceLine) {
+    try { currentPriceLine.applyOptions({ price: meta.regularMarketPrice }); } catch {}
+  }
+  if (currentHoverLabel) {
+    currentHoverLabel.textContent = fmtPrice(meta.regularMarketPrice, currency);
+  }
+}
+
+function startAutoRefresh(symbol) {
+  if (autoRefreshTimer) clearInterval(autoRefreshTimer);
+  autoRefreshTimer = setInterval(() => refreshPrice(symbol), 30000);
 }
 
 // ── 주기 탭 ───────────────────────────────────────────────────────────────────
